@@ -27,7 +27,7 @@ unsigned long Off_time = 1800; //  Time in seconds
 #ifdef AD8361
 #define FW_VER "1.4 RMS"
 #else
-#define FW_VER "1.4"
+#define FW_VER "1.4m1a"
 #endif
 
 // interrupt processing
@@ -698,6 +698,7 @@ void coarse_tune() {
    mem_cap = 0;
    step_ind = step;
    mem_step_cap = 3;
+   get_swr();                 // EW3MM: initialise the SWR variable before using it!
    min_swr = SWR + SWR/20;
    for(count=step; count<=31;) {
       Relay_set(count, cap, SW);
