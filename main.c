@@ -14,17 +14,17 @@ unsigned long Tick = 0; // ms system tick
 int Voltage, Voltage_old = 0;
 char btn_1_cnt = 0, btn_2_cnt = 0;
 unsigned long volt_cnt = 0, watch_cnt = 0, btn_cnt = 0, off_cnt, disp_cnt, tune_cnt;
-int PWR, SWR, SWR_fixed_old = 9999, PWR_fixed_old = 9999;
+int PWR, SWR, SWR_ind = 0, SWR_ind_old = 9999, SWR_fixed_old = 9999, PWR_fixed_old = 9999;
 char ind = 0, cap = 0, SW = 0, step_cap = 0, step_ind = 0, L_linear = 0, C_linear = 0;
 bit Overflow, B_short, B_long, B_xlong, gre, E_short, E_long;
 
-int Rel_Del = 5, min_for_start = 10, max_for_start = 150;
+int Rel_Del = 7, min_for_start = 10, max_for_start = 150;
 int Auto_delta = 130; // 1.3 SWR
 
 unsigned long Disp_time = 300; //  Time in seconds
 unsigned long Off_time = 1800; //  Time in seconds
 
-#define FW_VER "1.1"
+#define FW_VER "1.2"
 
 // interrupt processing
 void interupt() iv 0x0004  {
@@ -58,7 +58,7 @@ void interupt() iv 0x0004  {
       //  External interface
       if(Start){
          if(btn_2_cnt<25) btn_2_cnt++;
-         if(btn_2_cnt==20) E_long = 1;
+         if(btn_2_cnt==20 & Key_in) E_long = 1;
       }
       else if(btn_2_cnt>1 & btn_2_cnt<10){
          E_short = 1;
@@ -159,7 +159,9 @@ void oled_start(){
    Voltage_old = 9999;
    SWR_fixed_old = 9999;
    PWR_fixed_old = 9999;
-   volt_cnt = Tick;
+   SWR_ind_old = 9999;
+   SWR_ind = 0;
+   volt_cnt = Tick + 1;
    watch_cnt = Tick;
    B_short = 0; B_long = 0; B_xlong = 0;
    disp_cnt = Tick + Disp_time*1000;
@@ -202,6 +204,7 @@ void watch_swr(void){
    }
    if(PWR_fixed<10)
       SWR_fixed = 0;
+   //
    if(Overflow){
       for(cnt=3; cnt!=0; cnt--){
          oled_wr_str(2, 6, "OVERLOAD ", 9);
@@ -215,18 +218,22 @@ void watch_swr(void){
       Delay_ms(500);
       Overflow = 0;
    }
-   else if(SWR_fixed!=SWR_fixed_old){
-      SWR_fixed_old = SWR_fixed;
-      draw_swr(SWR_fixed);
+   else if(PWR_fixed>10){
+      if(PWR_fixed>min_for_start & PWR_fixed<max_for_start) {
+         if(SWR_fixed>=Auto_delta & ((SWR_fixed>SWR_fixed_old & (SWR_fixed-SWR_fixed_old)>delta) | (SWR_fixed<SWR_fixed_old & (SWR_fixed_old-SWR_fixed)>delta) | SWR_fixed_old==999))
+            { Btn_long(); return; }
+      }
+      if(SWR_fixed!=SWR_fixed_old){
+         SWR_fixed_old = SWR_fixed;
+         draw_swr(SWR_fixed);
+         SWR_ind = SWR_fixed;
+      }
    }
-
+   else if(SWR_ind!=SWR_ind_old){
+      SWR_ind_old = SWR_ind;
+      draw_swr(SWR_ind);
+   }
    //
-   if(PWR_fixed<min_for_start | PWR_fixed>max_for_start) return;
-   //
-   if(SWR_fixed>=Auto_delta & ((SWR_fixed>SWR_fixed_old & (SWR_fixed-SWR_fixed_old)>delta) | (SWR_fixed<SWR_fixed_old & (SWR_fixed_old-SWR_fixed)>delta) | SWR_fixed_old==999))
-      { Btn_long(); }
-
-
    return;
 }
 
@@ -324,6 +331,7 @@ void Btn_long(){
    Green = 0;
    oled_wr_str(2, 0, "TUNE     ", 9);
    tune();
+   SWR_ind = SWR;
    oled_wr_str(2, 0, "SWR ", 4);
    oled_wr_str(2, 42, "=", 1);
    draw_swr(SWR);
@@ -339,6 +347,7 @@ void Ext_long(){
    Green = 0;
    OLED_PWD = 1;
    tune();
+   SWR_ind = SWR;
    Green = 1;
    E_long = 0;
    return;
@@ -364,9 +373,9 @@ void Btn_short(){
 void Greating(){
    Green = 0;
    oled_clear();
-   oled_wr_str_s(0, 0, " DESIGNED BY N7DDC", 18);
-   oled_wr_str_s(2, 0, " FW VERSION ", 12);
-   oled_wr_str_s(2, 12*7, FW_VER, 3);
+   oled_wr_str_s(1, 0, " DESIGNED BY N7DDC", 18);
+   oled_wr_str_s(3, 0, " FW VERSION ", 12);
+   oled_wr_str_s(3, 12*7, FW_VER, 3);
    Delay_ms(3000);
    while(GetButton) asm NOP;
    Green = 1;
@@ -451,7 +460,7 @@ void power_off(void){
       Delay_ms(100);
       if(GetButton) btn_cnt++;
       else btn_cnt = 0;
-      if(btn_cnt>25) break;
+      if(btn_cnt>15) break;
    }
    // Power saving
    SYSCMD_bit = 0;
@@ -468,6 +477,7 @@ void power_off(void){
    B_short = 0;
    B_long = 0;
    B_xlong = 0;
+   E_long = 0;
    return;
 }
 
@@ -559,6 +569,9 @@ void get_pwr(){
    //
    Forward = get_forward();
    Reverse = get_reverse();
+   //Forward = correction(Forward);
+   //Reverse = correction(Reverse);
+   // p = Forward;
    //
    p = correction(Forward);
    P = p * 5 / 1000;
@@ -589,7 +602,7 @@ void get_pwr(){
 
 void get_swr(){
    get_pwr();
-   tune_cnt = 1000;
+   tune_cnt = 200;
    while(PWR<min_for_start | PWR>max_for_start){   // waiting for good power
       if(B_short){
          Btn_short();
@@ -597,7 +610,7 @@ void get_swr(){
          return;
       }
       if(B_xlong){
-         Btn_xlong();
+         //Btn_xlong();
          SWR = 0;
          return;
       }

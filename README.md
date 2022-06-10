@@ -3,6 +3,10 @@
 ### Official conversation group - https://groups.io/g/ATU100
 ### Schematic and assembly instruction by VK3PE - http://carnut.info/ATU_N7DDC/ATU-10/ATU-10_by-vk3pe_build_info/ATU-10_vk3pe_V1.2_ALL_INFO_290921.pdf
 
+###### New in FW version 1.2  
+1 - Display memory feature for last SWR  added  
+2 - full automatic mode error solved.
+
 ###### New in FW version 1.1  
 1 - the control method has been reworked, there is no more sleep mode. Now the tuner either shines on the display for 5 minutes after it is disturbed, or turns off after 30 minutes if it is not touched and the transmitter is not turned on. For these 30 minutes, the tuner constantly monitors the power supplied and instantly lights up the display when needed. The current consumption in this monitoring mode is 4 mA.
 Long press on the button now turns the device on and off.  
