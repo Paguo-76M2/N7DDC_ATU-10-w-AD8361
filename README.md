@@ -5,11 +5,10 @@
 
 ###### New in FW version 1.4 RMS
 1 - merged code for AD8361, borrowed from N7DDC's "Symmetric" ATU
-<<<<<<< HEAD
 2 - firmware's support of original (diode) detectors is retained, to compile a FW with diodes detector - comment out the AD8361 declaration in the main.h file (line #30)
 3 - the "POWER OFF" message appears on shut-down after 30 mins
-=======
->>>>>>> 9e0dda1649690ee8bbeb0cda16f4cfba069efd04
+
+
 
 ###### New in FW version 1.4
 1 - The button glitches solved   
