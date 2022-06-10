@@ -4,8 +4,9 @@
 ### Schematic and assembly instruction by VK3PE - http://carnut.info/ATU_N7DDC/ATU-10/ATU-10_by-vk3pe_build_info/ATU-10_vk3pe_V1.2_ALL_INFO_290921.pdf
 
 ###### New in FW version 1.4 RMS
-1 - merged code for AD8361, borrowed from the "Symmetric" ATU
+1 - merged code for AD8361, borrowed from N7DDC's "Symmetric" ATU
 2 - the "POWER OFF" message appears on shut-down after 30 mins
+Firmware's support of original (diode) detectors is retained. To switch between either diodes or AD8361 support one must edit line #30 in the main.h, by (un)commenting the AD8361 declaration.
 
 ###### New in FW version 1.4
 1 - The button glitches solved   
