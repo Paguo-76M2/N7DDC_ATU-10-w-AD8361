@@ -8,8 +8,6 @@
 2 - firmware's support of original (diode) detectors is retained, to compile a FW with diodes detector - comment out the AD8361 declaration in the main.h file (line #30)
 3 - the "POWER OFF" message appears on shut-down after 30 mins
 
-
-
 ###### New in FW version 1.4
 1 - The button glitches solved   
 2 - More stability in bus transfer to OLED   
