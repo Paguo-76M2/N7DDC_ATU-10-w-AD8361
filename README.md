@@ -1,7 +1,12 @@
-# ATU-10 - The Tiny QRP Automatic Antenna Tuner
+# ATU-10 - The Tiny QRP Automatic Antenna Tuner with AD8361
+# true RMS detectors
 
 ### Official conversation group - https://groups.io/g/ATU100
 ### Schematic and assembly instruction by VK3PE - http://carnut.info/ATU_N7DDC/ATU-10/ATU-10_by-vk3pe_build_info/ATU-10_vk3pe_V1.2_ALL_INFO_290921.pdf
+
+###### New in FW version 1.4 RMS
+1 - merged code for AD8361, borrowed from the "Symmetric" ATU
+2 - the "POWER OFF" message appears on shut-down after 30 mins
 
 ###### New in FW version 1.4
 1 - The button glitches solved   

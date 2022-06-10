@@ -1,6 +1,6 @@
-// ATU-10 QRP 10 watts automatic antenna tuner
+// ATU-10 QRP 10 watts automatic antenna tuner with AD8361 true RMS detectors
 // David Fainitski, N7DDC
-// 2021
+// 2020, 2022
 
 #include "pic_init.h"
 #include "main.h"
@@ -24,7 +24,11 @@ int Auto_delta = 130; // 1.3 SWR
 unsigned long Disp_time = 300; //  Time in seconds
 unsigned long Off_time = 1800; //  Time in seconds
 
+#ifdef AD8361
+#define FW_VER "1.4 RMS"
+#else
 #define FW_VER "1.4"
+#endif
 
 // interrupt processing
 void interupt() iv 0x0004  {
@@ -77,6 +81,9 @@ void main() {
    Key_out = 1;
    gre = 1;
    oled_start();
+#ifdef AD8361
+   AD8361_PWD = 0; // enable AD8361
+#endif
    //if(Debug) check_reset_flags();
    ADC_Init();
    Overflow = 0;
@@ -317,9 +324,10 @@ void Voltage_show(){
 }
 
 void Btn_xlong(){
-   oled_clear();
-   oled_wr_str(1, 0, " POWER OFF ", 11);
-   Delay_ms(2000);
+// moved to power_off()
+//   oled_clear();
+//   oled_wr_str(1, 0, " POWER OFF ", 11);
+//   Delay_ms(2000);
    power_off();
    return;
 }
@@ -376,7 +384,7 @@ void Greating(){
    oled_clear();
    oled_wr_str_s(1, 0, " DESIGNED BY N7DDC", 18);
    oled_wr_str_s(3, 0, " FW VERSION ", 12);
-   oled_wr_str_s(3, 12*7, FW_VER, 3);
+   oled_wr_str_s(3, 12*7, FW_VER, strlen(FW_VER));
    Delay_ms(3000);
    while(GetButton) asm NOP;
    Green = 1;
@@ -449,6 +457,14 @@ void power_off(void){
    IOCBF5_bit = 0;
    IOCBN5_bit = 1;
    // Power saving
+#ifdef AD8361
+   AD8361_PWD = 1; // disable AD8361
+#endif
+   // say good-bye nicely
+   if(OLED_PWD==0) { OLED_PWD = 1; Delay_ms(200); Soft_I2C_init(); Delay_ms(10); oled_init(); }
+   oled_clear();
+   oled_wr_str(1, 0, " POWER OFF ", 11);
+   Delay_ms(2000);
    OLED_PWD = 0;
    RED = 1;
    Green = 1;
@@ -469,6 +485,9 @@ void power_off(void){
    T0EN_bit = 1;
    GIE_bit = 1;
    // Return to work
+#ifdef AD8361
+   AD8361_PWD = 0; // enable AD8361
+#endif
    gre = 1;
    oled_start();
    while(GetButton){asm NOP;}
@@ -491,6 +510,7 @@ void check_reset_flags(void){
    return;
 }
 
+#ifndef AD8361
 int correction(int input) {
      input *= 2;
      //
@@ -505,6 +525,7 @@ int correction(int input) {
      //
      return input;
 }
+#endif
 
 int get_reverse(void){
    unsigned int v;
@@ -562,12 +583,21 @@ void get_pwr(){
    Forward = get_forward();
    Reverse = get_reverse();
    //
+#ifdef AD8361
+   p = Forward / 7.22;
+   p = p * 110.0;
+   p = p / 1000.0;
+   p = p * p;
+   p = p / 5;
+   p += 0.5;
+#else
    p = correction(Forward);
-   P = p * 5 / 1000;
+   p = p * 5 / 1000;
    p = p / 1.414;
    p = p * p;
    p = p / 5;
    p += 0.5;
+#endif
    PWR = p;
    //
    if(PWR>0){
@@ -772,7 +802,7 @@ void tune() {
    sharp_cap(); if(SWR==0) {atu_reset(); Key_out = 1; return;}
    get_swr(); if(SWR<120) { Key_out = 1; return; }
    //
-   if(SWR<200 & SWR<swr_mem & (swr_mem-SWR)>100) { Key_out = 1; return; }
+   if(SWR<200 && SWR<swr_mem && (swr_mem-SWR)>100) { Key_out = 1; return; }
    swr_mem = SWR;
    ind_mem = ind;
    cap_mem = cap;
