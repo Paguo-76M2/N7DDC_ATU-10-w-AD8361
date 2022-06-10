@@ -20,8 +20,8 @@ void sub_tune(void);
 void tune(void);
 int correction(int);
 void atu_reset(void);
-void draw_swr(int);
-void draw_power(int);
+void draw_swr(unsigned int);
+void draw_power(unsigned int);
 void oled_start(void);
 void power_off(void);
 void Greating(void);
@@ -41,4 +41,3 @@ void Ext_long(void);
 #define Key_in PORTD.B2
 #define Start_out LATD1_bit
 #define Start ~PORTD.B1
-

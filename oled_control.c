@@ -10,8 +10,13 @@ void oled_disp_off() {
 }
 
 void oled_init (void) {  // OLED init
-   Soft_I2C_Start();
-   Soft_I2C_Write(oled_addr);             // device addres
+   char cnt;
+   for(cnt=0; cnt<10; cnt++){
+      Soft_I2C_Start();
+      if(Soft_I2C_Write(oled_addr)==0) break;       // device addres
+      else Soft_I2C_Stop();
+      Delay_ms(300);
+   }
    Soft_I2C_Write(0);              // 0 - continious mode, command; 64 - Co, data
    Soft_I2C_Write (0xAE); // display OFF
    //         initialisation

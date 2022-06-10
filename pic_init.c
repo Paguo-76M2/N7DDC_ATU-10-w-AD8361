@@ -43,7 +43,7 @@ void pic_init (void) {
   T0CS1_bit = 1;
   T0CS2_bit = 0;
   T016BIT_bit = 1;
-  TMR0L = 0xC0;   // 80_000 cycles to OF
+  TMR0L = 0xC0;   // 8_000 cycles to OF
   TMR0H = 0xE0;
   TMR0IF_bit = 0;
   T0EN_bit = 1;

@@ -3,6 +3,12 @@
 ### Official conversation group - https://groups.io/g/ATU100
 ### Schematic and assembly instruction by VK3PE - http://carnut.info/ATU_N7DDC/ATU-10/ATU-10_by-vk3pe_build_info/ATU-10_vk3pe_V1.2_ALL_INFO_290921.pdf
 
+###### New in FW version 1.3
+1 - power meter calibrated
+2 - compatibility with "slow Chinese" OLEDs (up to 3 seconds delay)
+3 - reinitialise the timer after the sleep mode, keypresses should work OK now
+4 - other fixes and enhancements
+
 ###### New in FW version 1.2  
 1 - Display memory feature for last SWR  added  
 2 - full automatic mode error solved.

@@ -34,8 +34,7 @@ File3=pic_init.h
 File4=oled_control.c
 File5=oled_control.h
 File6=Soft_I2C.c
-File7=.\C:\Program Files (x86)\mikroC PRO for PIC\Uses\P16_Enh\__Lib_Delays.c
-Count=8
+Count=7
 [EEPROM]
 Count=0
 [ACTIVE_COMMENTS_FILES]
@@ -67,8 +66,8 @@ Count=2
 [LIB_EXPANDED_NODES]
 0=mikroE Libraries
 1=System Libraries
-30=Conversions
-Count=4
+2=ADC
+Count=3
 [PROGRAMMER_TYPE]
 Value=mikroE mikroProg
 [CODEGRIP_OPTIONS]

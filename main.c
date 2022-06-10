@@ -13,18 +13,18 @@ char txt[8], txt_2[8];
 unsigned long Tick = 0; // ms system tick
 int Voltage, Voltage_old = 0;
 char btn_1_cnt = 0, btn_2_cnt = 0;
-unsigned long volt_cnt = 0, watch_cnt = 0, btn_cnt = 0, off_cnt, disp_cnt, tune_cnt;
-int PWR, SWR, SWR_ind = 0, SWR_ind_old = 9999, SWR_fixed_old = 9999, PWR_fixed_old = 9999;
+unsigned long volt_cnt = 0, watch_cnt = 0, btn_cnt = 0, off_cnt, disp_cnt;
+int PWR, SWR, SWR_ind = 0, SWR_fixed_old = 100, PWR_fixed_old = 9999;
 char ind = 0, cap = 0, SW = 0, step_cap = 0, step_ind = 0, L_linear = 0, C_linear = 0;
 bit Overflow, B_short, B_long, B_xlong, gre, E_short, E_long;
 
-int Rel_Del = 7, min_for_start = 10, max_for_start = 150;
+int Rel_Del = 7, rldl, min_for_start = 10, max_for_start = 150;
 int Auto_delta = 130; // 1.3 SWR
 
 unsigned long Disp_time = 300; //  Time in seconds
 unsigned long Off_time = 1800; //  Time in seconds
 
-#define FW_VER "1.2"
+#define FW_VER "1.3"
 
 // interrupt processing
 void interupt() iv 0x0004  {
@@ -90,6 +90,7 @@ void main() {
    off_cnt = Tick + Off_time*1000;
 
    //
+   rldl = Rel_Del;
    //Relay_set(0, 0, 0);
    //
    while(1) {
@@ -157,10 +158,10 @@ void oled_start(){
    oled_wr_str(0, 42, "=", 1);
    oled_wr_str(2, 42, "=", 1);
    Voltage_old = 9999;
-   SWR_fixed_old = 9999;
+   SWR_fixed_old = 100;
    PWR_fixed_old = 9999;
-   SWR_ind_old = 9999;
    SWR_ind = 0;
+   draw_swr(SWR_ind);
    volt_cnt = Tick + 1;
    watch_cnt = Tick;
    B_short = 0; B_long = 0; B_xlong = 0;
@@ -179,7 +180,7 @@ void watch_swr(void){
    // peak detector
    cnt = 600;
    PWR_fixed = 0;
-   SWR_fixed = 999;
+   SWR_fixed = 0;
    for(peak_cnt=0; peak_cnt<cnt; peak_cnt++){
       get_pwr();
       if(PWR>PWR_fixed) {PWR_fixed = PWR; SWR_fixed = SWR;}
@@ -192,7 +193,7 @@ void watch_swr(void){
          off_cnt = Tick + Off_time*1000;
       }
       else oled_start();
-   }
+   };
    //
    if(PWR_fixed!=PWR_fixed_old){
       if(Overflow)
@@ -202,8 +203,13 @@ void watch_swr(void){
       PWR_fixed_old = PWR_fixed;
       draw_power(PWR_fixed);
    }
-   if(PWR_fixed<10)
+   //
+   if(PWR_fixed<10){
       SWR_fixed = 0;
+      //SWR_ind = 0;    // Last meassured SWR on display ! not a bug
+      draw_swr(SWR_ind);
+      return;
+   }
    //
    if(Overflow){
       for(cnt=3; cnt!=0; cnt--){
@@ -218,26 +224,23 @@ void watch_swr(void){
       Delay_ms(500);
       Overflow = 0;
    }
-   else if(PWR_fixed>10){
-      if(PWR_fixed>min_for_start & PWR_fixed<max_for_start) {
-         if(SWR_fixed>=Auto_delta & ((SWR_fixed>SWR_fixed_old & (SWR_fixed-SWR_fixed_old)>delta) | (SWR_fixed<SWR_fixed_old & (SWR_fixed_old-SWR_fixed)>delta) | SWR_fixed_old==999))
-            { Btn_long(); return; }
-      }
-      if(SWR_fixed!=SWR_fixed_old){
-         SWR_fixed_old = SWR_fixed;
-         draw_swr(SWR_fixed);
-         SWR_ind = SWR_fixed;
-      }
+   //
+   else if(PWR_fixed>=min_for_start && PWR_fixed<max_for_start && SWR_fixed>=Auto_delta  || SWR_Fixed>900 ) {
+       if(  (SWR_fixed>SWR_fixed_old && (SWR_fixed-SWR_fixed_old)>delta) || (SWR_fixed<SWR_fixed_old && (SWR_fixed_old-SWR_fixed)>delta) || SWR_Fixed>900  ) {
+           Btn_long();
+           return;
+       }
    }
-   else if(SWR_ind!=SWR_ind_old){
-      SWR_ind_old = SWR_ind;
+   //
+   if(SWR_fixed>99 && SWR_fixed!=SWR_ind){
+      SWR_ind = SWR_fixed;
       draw_swr(SWR_ind);
    }
    //
    return;
 }
 
-void draw_swr(int s){
+void draw_swr(unsigned int s){
    if(s==0)
       oled_wr_str(2, 60, "0.00", 4);
    else {
@@ -252,7 +255,7 @@ void draw_swr(int s){
    return;
 }
 
-void draw_power(int p){
+void draw_power(unsigned int p){
    //
    if(p==0){
       oled_wr_str(0, 60, "0.0", 3);
@@ -285,6 +288,7 @@ void Voltage_show(){
    get_batt();
    if(Voltage != Voltage_old) { Voltage_old = Voltage; oled_voltage(Voltage); }
    //               4.2 - 3.4
+   //rldl = Rel_Del + (4200 - Voltage) / 100;
    if(Voltage>3700){
       Green = 0;
       Red = 1;
@@ -332,12 +336,14 @@ void Btn_long(){
    oled_wr_str(2, 0, "TUNE     ", 9);
    tune();
    SWR_ind = SWR;
+   SWR_fixed_old = SWR;
    oled_wr_str(2, 0, "SWR ", 4);
    oled_wr_str(2, 42, "=", 1);
-   draw_swr(SWR);
+   draw_swr(SWR_ind);
    Green = 1;
    B_long = 0;
    E_long = 0;
+   btn_1_cnt = 0;
    volt_cnt = Tick;
    watch_cnt = Tick;
    return;
@@ -361,10 +367,12 @@ void Btn_short(){
    oled_wr_str(2, 0, "SWR  ", 5);
    oled_wr_str(2, 42, "=", 1);
    oled_wr_str(2, 60, "0.00", 4);
+   SWR_fixed_old = 100;
    Delay_ms(300);
    Green = 1;
    B_short = 0;
    E_short = 0;
+   btn_1_cnt = 0;
    volt_cnt = Tick;
    watch_cnt = Tick;
    return;
@@ -410,13 +418,13 @@ void Relay_set(char L, char C, char I){
    C_sw = I;
    //
    Rel_to_gnd = 1;
-   Vdelay_ms(Rel_Del);
+   Vdelay_ms(rldl);
    Rel_to_gnd = 0;
    Delay_us(10);
    Rel_to_plus_N = 0;
-   Vdelay_ms(Rel_Del);
+   Vdelay_ms(rldl);
    Rel_to_plus_N = 1;
-   Vdelay_ms(Rel_Del);
+   Vdelay_ms(rldl);
    //
    L_010 = 0;
    L_022 = 0;
@@ -433,6 +441,8 @@ void Relay_set(char L, char C, char I){
    C_470 = 0;
    C_1000 = 0;
    C_2200 = 0;
+   //
+   C_sw = 0;
    return;
 }
 
@@ -478,6 +488,8 @@ void power_off(void){
    B_long = 0;
    B_xlong = 0;
    E_long = 0;
+   btn_1_cnt = 0;
+   btn_cnt = Tick;
    return;
 }
 
@@ -499,65 +511,62 @@ void check_reset_flags(void){
 int correction(int input) {
      input *= 2;
      //
-     if(input <= 588) input += 376;
-     else if(input <= 882) input += 400;
-     else if(input <= 1313) input += 476;
-     else if(input <= 1900) input += 514;
-     else if(input <= 2414) input += 568;
-     else if(input <= 2632) input += 644;
-     else if(input <= 2942) input += 732;
-     else if(input <= 3232) input += 784;
-     else if(input <= 3324) input += 992;
-     else if(input <= 3720) input += 1000;
-     else if(input <= 4340) input += 1160;
-     else if(input <= 4808) input += 1360;
-     else if(input <= 5272) input += 1424;
-     else  input += 1432;
+     if(input <= 543) input += 256;
+     else if(input <= 791) input += 274;
+     else if(input <= 1225) input += 288;
+     else if(input <= 1991) input += 286;
+     else if(input <= 2766) input += 288;
+     else if(input <= 3970) input += 260;
+     else if(input <= 5100) input += 250;
+     else  input += 240;
      //
      return input;
 }
 
 int get_reverse(void){
-   int v;
-   float f;
-   ADC_Init_Advanced(_ADC_INTERNAL_FVRH1);
+   unsigned int v;
+   unsigned long d;
+   ADC_Init_Advanced(_ADC_INTERNAL_VREFL | _ADC_INTERNAL_FVRH1);
    Delay_us(100);
    v = ADC_Get_Sample(REV_input);
    if(v==1023){
-      ADC_Init_Advanced(_ADC_INTERNAL_FVRH2);
+      ADC_Init_Advanced(_ADC_INTERNAL_VREFL | _ADC_INTERNAL_FVRH2);
       Delay_us(100);
       v = ADC_Get_Sample(REV_input) * 2;
    }
-   if(v==1023*2){
-      get_batt();
-      ADC_Init_Advanced(_ADC_INTERNAL_REF);
+   if(v==2046){
+      ADC_Init_Advanced(_ADC_INTERNAL_VREFL | _ADC_INTERNAL_VREFH);
       Delay_us(100);
-      v = ADC_Get_Sample(FWD_input);
-      f = Voltage / 1024;
-      v = v * f;
+      v = ADC_Get_Sample(REV_input);
+      if(v==1023) Overflow = 1;
+      get_batt();
+      d = (long)v * (long)Voltage;
+      d = d / 1024;
+      v = (int)d;
    }
    return v;
 }
 
 int get_forward(void){
-   int v;
-   float f;
-   ADC_Init_Advanced(_ADC_INTERNAL_FVRH1);
+   unsigned int v;
+   unsigned long d;
+   ADC_Init_Advanced(_ADC_INTERNAL_VREFL | _ADC_INTERNAL_FVRH1);
    Delay_us(100);
    v = ADC_Get_Sample(FWD_input);
    if(v==1023){
-      ADC_Init_Advanced(_ADC_INTERNAL_FVRH2);
+      ADC_Init_Advanced(_ADC_INTERNAL_VREFL | _ADC_INTERNAL_FVRH2);
       Delay_us(100);
       v = ADC_Get_Sample(FWD_input) * 2;
    }
-   if(v==1023*2){
-      get_batt();
-      ADC_Init_Advanced(_ADC_INTERNAL_REF);
+   if(v==2046){
+      ADC_Init_Advanced(_ADC_INTERNAL_VREFL | _ADC_INTERNAL_VREFH);
       Delay_us(100);
       v = ADC_Get_Sample(FWD_input);
       if(v==1023) Overflow = 1;
-      f = Voltage / 1024;
-      v = v * f;
+      get_batt();
+      d = (long)v * (long)Voltage;
+      d = d / 1024;
+      v = (int)d;
    }
    return v;
 }
@@ -569,9 +578,6 @@ void get_pwr(){
    //
    Forward = get_forward();
    Reverse = get_reverse();
-   //Forward = correction(Forward);
-   //Reverse = correction(Reverse);
-   // p = Forward;
    //
    p = correction(Forward);
    P = p * 5 / 1000;
@@ -601,25 +607,32 @@ void get_pwr(){
 }
 
 void get_swr(){
+   unsigned int tune_cnt = 300;
+   unsigned int PWR_max = 0;
    get_pwr();
-   tune_cnt = 200;
-   while(PWR<min_for_start | PWR>max_for_start){   // waiting for good power
+   while(PWR<min_for_start || PWR>max_for_start){   // waiting for good power
       if(B_short){
          Btn_short();
          SWR = 0;
-         return;
+         break;
       }
       if(B_xlong){
          //Btn_xlong();
          SWR = 0;
-         return;
+         break;
       }
+      //
       get_pwr();
-      draw_power(PWR);
-      if(tune_cnt>0) tune_cnt --;
+      if(tune_cnt>0){
+          tune_cnt --;
+          if(PWR>PWR_max)
+              PWR_max = PWR;
+      }
       else {
-         SWR = 0;
-         return;
+         draw_power(PWR_max);
+         PWR_max = 0;
+         tune_cnt = 300;
+         Delay_ms(1);
       }
    }
    //  good power
@@ -627,7 +640,7 @@ void get_swr(){
 }
 
 void get_batt(void){
-   ADC_Init_Advanced(_ADC_INTERNAL_FVRH1);
+   ADC_Init_Advanced(_ADC_INTERNAL_VREFL | _ADC_INTERNAL_FVRH1);
    Delay_us(100);
    Voltage = ADC_Get_Sample(Battery_input) * 11;
    return;
@@ -793,14 +806,13 @@ void tune() {
    //
    if(SWR>swr_mem) {
       if(SW==1) SW = 0; else SW = 1;
-      Relay_set(ind, cap, SW);
       ind = ind_mem;
       cap = cap_mem;
       Relay_set(ind, cap, sw);
-      SWR = swr_mem;
    }
    //
    asm CLRWDT;
+   get_SWR();
    Key_out = 1;
    return;
 }
