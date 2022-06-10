@@ -24,7 +24,7 @@ int Auto_delta = 130; // 1.3 SWR
 unsigned long Disp_time = 300; //  Time in seconds
 unsigned long Off_time = 1800; //  Time in seconds
 
-#define FW_VER "1.3"
+#define FW_VER "1.4"
 
 // interrupt processing
 void interupt() iv 0x0004  {
@@ -32,40 +32,40 @@ void interupt() iv 0x0004  {
    if(TMR0IF_bit) {   // Timer0
       TMR0IF_bit = 0;
       Tick++;
-      TMR0L = 0xC0;   // 80_000 cycles to OF
+      TMR0L = 0xC0;   // 8_000 cycles to OF
       TMR0H = 0xE0;
-   }
-   //
-   if(Tick>=btn_cnt){  // every 10ms
-      btn_cnt += 10;
       //
-      if(GetButton | Start){
-         disp_cnt = Tick + Disp_time*1000;
-         off_cnt = Tick + Off_time*1000;
+      if(Tick>=btn_cnt){  // every 10ms
+         btn_cnt += 10;
+         //
+         if(GetButton | Start){
+            disp_cnt = Tick + Disp_time*1000;
+            off_cnt = Tick + Off_time*1000;
+         }
+         //
+         if(GetButton){  //
+            if(btn_1_cnt<250) btn_1_cnt++;
+            if(btn_1_cnt==25) B_long = 1;  // long pressing detected
+            if(btn_1_cnt==250 & OLED_PWD) B_xlong = 1;  // Xtra long pressing detected
+         }
+         else if(btn_1_cnt>2 & btn_1_cnt<25){
+            B_short = 1;               // short pressing detected
+            btn_1_cnt = 0;
+         }
+         else
+            btn_1_cnt = 0;
+         //  External interface
+         if(Start){
+            if(btn_2_cnt<25) btn_2_cnt++;
+            if(btn_2_cnt==20 & Key_in) E_long = 1;
+         }
+         else if(btn_2_cnt>1 & btn_2_cnt<10){
+            E_short = 1;
+            btn_2_cnt = 0;
+         }
+         else
+            btn_2_cnt = 0;
       }
-      //
-      if(GetButton){  //
-         if(btn_1_cnt<250) btn_1_cnt++;
-         if(btn_1_cnt==25) B_long = 1;  // long pressing detected
-         if(btn_1_cnt==250 & OLED_PWD) B_xlong = 1;  // Xtra long pressing detected
-      }
-      else if(btn_1_cnt>2 & btn_1_cnt<25){
-         B_short = 1;               // short pressing detected
-         btn_1_cnt = 0;
-      }
-      else
-         btn_1_cnt = 0;
-      //  External interface
-      if(Start){
-         if(btn_2_cnt<25) btn_2_cnt++;
-         if(btn_2_cnt==20 & Key_in) E_long = 1;
-      }
-      else if(btn_2_cnt>1 & btn_2_cnt<10){
-         E_short = 1;
-         btn_2_cnt = 0;
-      }
-      else
-         btn_2_cnt = 0;
    }
    return;
 }
@@ -80,11 +80,6 @@ void main() {
    //if(Debug) check_reset_flags();
    ADC_Init();
    Overflow = 0;
-   B_short = 0;
-   B_long = 0;
-   B_xlong = 0;
-   E_short = 0;
-   E_long = 0;
    //
    disp_cnt = Tick + Disp_time*1000;
    off_cnt = Tick + Off_time*1000;
@@ -164,7 +159,7 @@ void oled_start(){
    draw_swr(SWR_ind);
    volt_cnt = Tick + 1;
    watch_cnt = Tick;
-   B_short = 0; B_long = 0; B_xlong = 0;
+   B_short = 0; B_long = 0; B_xlong = 0, E_short = 0; E_long = 0;
    disp_cnt = Tick + Disp_time*1000;
    off_cnt = Tick + Off_time*1000;
    return;
@@ -187,7 +182,7 @@ void watch_swr(void){
       Delay_ms(1);
    }
    //
-   if(PWR_fixed>0){
+   if(PWR_fixed>0){   // Turn on the display
       if(OLED_PWD){
          disp_cnt = Tick + Disp_time*1000;
          off_cnt = Tick + Off_time*1000;
@@ -203,12 +198,17 @@ void watch_swr(void){
       PWR_fixed_old = PWR_fixed;
       draw_power(PWR_fixed);
    }
-   //
-   if(PWR_fixed<10){
-      SWR_fixed = 0;
-      //SWR_ind = 0;    // Last meassured SWR on display ! not a bug
-      draw_swr(SWR_ind);
-      return;
+    //
+   if(SWR_fixed>99 && SWR_fixed!=SWR_ind){
+      SWR_ind = SWR_fixed;
+      if(PWR_fixed<10){
+         SWR_fixed = 0;
+         //SWR_ind = 0;    // Last meassured SWR on display ! not a bug
+         draw_swr(SWR_ind);
+         return;
+      }
+      else
+         draw_swr(SWR_ind);
    }
    //
    if(Overflow){
@@ -230,11 +230,6 @@ void watch_swr(void){
            Btn_long();
            return;
        }
-   }
-   //
-   if(SWR_fixed>99 && SWR_fixed!=SWR_ind){
-      SWR_ind = SWR_fixed;
-      draw_swr(SWR_ind);
    }
    //
    return;
@@ -322,8 +317,6 @@ void Voltage_show(){
 }
 
 void Btn_xlong(){
-   B_xlong = 0;
-   btn_cnt = 0;
    oled_clear();
    oled_wr_str(1, 0, " POWER OFF ", 11);
    Delay_ms(2000);
@@ -460,9 +453,6 @@ void power_off(void){
    RED = 1;
    Green = 1;
    //
-   C_sw = 0;
-   SYSCMD_bit = 1;
-   //
    btn_cnt = 0;
    while(1){
       if(btn_cnt==0){ Delay_ms(100); IOCBF5_bit = 0; asm sleep; }
@@ -472,8 +462,6 @@ void power_off(void){
       else btn_cnt = 0;
       if(btn_cnt>15) break;
    }
-   // Power saving
-   SYSCMD_bit = 0;
    // Enable interrupts
    IOCIE_bit = 0;
    IOCBN5_bit = 0;
@@ -484,15 +472,10 @@ void power_off(void){
    gre = 1;
    oled_start();
    while(GetButton){asm NOP;}
-   B_short = 0;
-   B_long = 0;
-   B_xlong = 0;
-   E_long = 0;
    btn_1_cnt = 0;
    btn_cnt = Tick;
    return;
 }
-
 
 void check_reset_flags(void){
    char i = 0;
@@ -607,7 +590,7 @@ void get_pwr(){
 }
 
 void get_swr(){
-   unsigned int tune_cnt = 300;
+   unsigned int pwr_cnt = 300, tuneoff_cnt = 300;
    unsigned int PWR_max = 0;
    get_pwr();
    while(PWR<min_for_start || PWR>max_for_start){   // waiting for good power
@@ -623,15 +606,18 @@ void get_swr(){
       }
       //
       get_pwr();
-      if(tune_cnt>0){
-          tune_cnt --;
+      if(pwr_cnt>0){
+          pwr_cnt --;
           if(PWR>PWR_max)
               PWR_max = PWR;
       }
       else {
-         draw_power(PWR_max);
+         if(PWR_max!=PWR_fixed_old) draw_power(PWR_max);
+         PWR_fixed_old = PWR_max;
          PWR_max = 0;
-         tune_cnt = 300;
+         pwr_cnt = 300;
+         if(tuneoff_cnt>0) tuneoff_cnt--;
+         else { SWR = 0; break; }
          Delay_ms(1);
       }
    }
