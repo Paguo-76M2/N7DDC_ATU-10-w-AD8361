@@ -2,7 +2,7 @@
 
 # Aleksander Alekseev (c)
 # David Fainitski (c)
-# some tweaks by paguo-76M2fet
+# some tweaks by Paguo-76M2
 
 import numpy as np
 from math import pi
