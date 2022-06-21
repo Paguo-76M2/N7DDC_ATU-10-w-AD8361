@@ -54,4 +54,3 @@ On the front panel there is a control button, a small 0.91" OLED 128 * 32 displa
    
    There is also space for two dual-color LEDs with a common anode on the board, they can be installed if you do not need an OLED display.
 The right LED indicates the battery charging process, the left LED indicates the operation. In operating mode, it blinks briefly in color every three seconds, depending on the battery charge level.
-
