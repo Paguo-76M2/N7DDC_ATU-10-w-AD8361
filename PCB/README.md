@@ -7,4 +7,4 @@ The top layer overview:
 ![](https://github.com/Paguo-76M2/N7DDC_ATU-10-w-AD8361/blob/main/PCB/ATU-10_v1-4c5a_s1.JPG)
 
 The bottom layer overview:
-[![](https://github.com/Paguo-76M2/N7DDC_ATU-10-w-AD8361/blob/main/PCB/ATU-10_v1-4c5a_s2.JPG)]
+![](https://github.com/Paguo-76M2/N7DDC_ATU-10-w-AD8361/blob/main/PCB/ATU-10_v1-4c5a_s2.JPG)
