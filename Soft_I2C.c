@@ -1,14 +1,14 @@
-
+//
 #include "Soft_I2C.h"
-
+//
 #define Delay_I2C Delay_us(25)
-
+//
 // Software I2C connections
 #define Soft_I2C_Scl              LATA3_bit
 #define Soft_I2C_Sda              LATA2_bit
 #define Soft_I2C_Sda_in           PORTA.B2
 #define Soft_I2C_Scl_in           PORTA.B3
-
+//
 void Soft_I2C_Init(void) {
     Soft_I2C_Stop();
     return;

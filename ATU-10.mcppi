@@ -58,8 +58,7 @@ Count=0
 File0=Button
 File1=Conversions
 File2=ADC
-File3=C_String
-Count=4
+Count=3
 [EXPANDED_NODES]
 0=ATU-10.mcppi
 1=Sources
@@ -68,8 +67,7 @@ Count=2
 0=mikroE Libraries
 1=System Libraries
 2=ADC
-106=C_String
-Count=4
+Count=3
 [PROGRAMMER_TYPE]
 Value=mikroE mikroProg
 [CODEGRIP_OPTIONS]

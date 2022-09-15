@@ -13,11 +13,15 @@ void get_swr(void);
 void get_batt(void);
 void watch_swr(void);
 void coarse_cap(void);
+void tune(void);
+void subtune(void);
 void coarse_tune(void);
+void coarse_cap(void);
+void coarse_ind(void);
+void coarse_ind_cap(void);
+void sharp_tune(void);
 void sharp_cap(void);
 void sharp_ind(void);
-void sub_tune(void);
-void tune(void);
 int correction(int);
 void atu_reset(void);
 void draw_swr(unsigned int);
@@ -27,7 +31,7 @@ void power_off(void);
 void Greating(void);
 void Ext_long(void);
 
-#define AD8361        // adds support for TI's AD8361 TruPwr RF-detector
+
 
 #define ON 1
 #define OFF 0

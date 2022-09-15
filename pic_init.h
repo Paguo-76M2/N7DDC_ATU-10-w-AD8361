@@ -2,11 +2,10 @@
 //
 #define GetButton     ~ PORTB.B5
 //
-sbit Red            at LATB4_bit;  // logic "1" turns LED off
-sbit Green          at LATB3_bit;  // logic "1" turns LED off
-sbit OLED_PWD       at LATA4_bit;  // logic "1" powers OLED up
-sbit AD8361_PWD     at LATE2_bit;  // logic "1" disables AD8361
-sbit C_sw           at LATE0_bit;  // selects either CL or LC circuit
+sbit Red            at LATB4_bit;
+sbit Green          at LATB3_bit;
+sbit OLED_PWD       at LATA4_bit;
+sbit C_sw           at LATE0_bit;
 sbit L_010          at LATD7_bit;
 sbit L_022          at LATD6_bit;
 sbit L_045          at LATD5_bit;

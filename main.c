@@ -1,6 +1,5 @@
-// ATU-10 QRP 10 watts automatic antenna tuner with AD8361 true RMS detectors
 // David Fainitski, N7DDC
-// 2020, 2022
+// 2020
 
 #include "pic_init.h"
 #include "main.h"
@@ -13,29 +12,27 @@ char txt[8], txt_2[8];
 unsigned long Tick = 0; // ms system tick
 int Voltage, Voltage_old = 0;
 char btn_1_cnt = 0, btn_2_cnt = 0;
-unsigned long volt_cnt = 0, watch_cnt = 0, btn_cnt = 0, off_cnt, disp_cnt;
+unsigned long volt_cnt = 0, watch_cnt = 0, btn_cnt = 0, off_cnt = 10, disp_cnt=10;
 int PWR, SWR, SWR_ind = 0, SWR_fixed_old = 100, PWR_fixed_old = 9999;
-char ind = 0, cap = 0, SW = 0, step_cap = 0, step_ind = 0, L_linear = 0, C_linear = 0;
+char ind = 0, cap = 0, SW = 0;
 bit Overflow, B_short, B_long, B_xlong, gre, E_short, E_long;
 
-int Rel_Del = 7, rldl, min_for_start = 10, max_for_start = 150;
+int Rel_Del = 8, rldl, min_for_start = 10, max_for_start = 150;
 int Auto_delta = 130; // 1.3 SWR
 
-unsigned long Disp_time = 300; //  Time in seconds
-unsigned long Off_time = 1800; //  Time in seconds
+#define Disp_time 300000 //  Time in milliseconds  0 to always on
+#define Off_time  0 //1800000 //  Time in milliseconds  0 to always on
 
-#ifdef AD8361
-#define FW_VER "1.4 RMS"
-#else
-#define FW_VER "1.4m1a"
-#endif
+#define FW_VER "1.5"
 
 // interrupt processing
 void interupt() iv 0x0004  {
    //
-   if(TMR0IF_bit) {   // Timer0
+   if(TMR0IF_bit) {   // Timer0   every 1ms
       TMR0IF_bit = 0;
       Tick++;
+      if(disp_cnt!=0) disp_cnt--;
+      if(off_cnt!=0) off_cnt--;
       TMR0L = 0xC0;   // 8_000 cycles to OF
       TMR0H = 0xE0;
       //
@@ -43,8 +40,8 @@ void interupt() iv 0x0004  {
          btn_cnt += 10;
          //
          if(GetButton | Start){
-            disp_cnt = Tick + Disp_time*1000;
-            off_cnt = Tick + Off_time*1000;
+            disp_cnt = Disp_time;
+            off_cnt = Off_time;
          }
          //
          if(GetButton){  //
@@ -81,15 +78,12 @@ void main() {
    Key_out = 1;
    gre = 1;
    oled_start();
-#ifdef AD8361
-   AD8361_PWD = 0; // enable AD8361
-#endif
    //if(Debug) check_reset_flags();
    ADC_Init();
    Overflow = 0;
    //
-   disp_cnt = Tick + Disp_time*1000;
-   off_cnt = Tick + Off_time*1000;
+   disp_cnt = Disp_time;
+   off_cnt = Off_time;
 
    //
    rldl = Rel_Del;
@@ -106,12 +100,12 @@ void main() {
          watch_swr();
       }
       //
-      if(Tick>=disp_cnt){  // Display off
+      if(Disp_time!=0 && disp_cnt==0){  // Display off
          //Disp = 0;
          OLED_PWD = 0;
       }
       //
-      if(Tick>=off_cnt){    // Go to power off
+      if(Off_time!=0 && off_cnt==0){    // Go to power off
          power_off();
       }
       //
@@ -139,8 +133,7 @@ void main() {
     
   } // while(1)
 } // main
-
-
+//
 void oled_start(){
    OLED_PWD = 1;
    //Disp = 1;
@@ -167,12 +160,11 @@ void oled_start(){
    volt_cnt = Tick + 1;
    watch_cnt = Tick;
    B_short = 0; B_long = 0; B_xlong = 0, E_short = 0; E_long = 0;
-   disp_cnt = Tick + Disp_time*1000;
-   off_cnt = Tick + Off_time*1000;
+   disp_cnt = Disp_time;
+   off_cnt = Off_time;
    return;
 }
-
-
+//
 void watch_swr(void){
    char peak_cnt, cnt;
    int delta = Auto_delta - 100;
@@ -191,8 +183,8 @@ void watch_swr(void){
    //
    if(PWR_fixed>0){   // Turn on the display
       if(OLED_PWD){
-         disp_cnt = Tick + Disp_time*1000;
-         off_cnt = Tick + Off_time*1000;
+         disp_cnt = Disp_time;
+         off_cnt = Off_time;
       }
       else oled_start();
    };
@@ -232,8 +224,9 @@ void watch_swr(void){
       Overflow = 0;
    }
    //
-   else if(PWR_fixed>=min_for_start && PWR_fixed<max_for_start && SWR_fixed>=Auto_delta  || SWR_Fixed>900 ) {
-       if(  (SWR_fixed>SWR_fixed_old && (SWR_fixed-SWR_fixed_old)>delta) || (SWR_fixed<SWR_fixed_old && (SWR_fixed_old-SWR_fixed)>delta) || SWR_Fixed>900  ) {
+
+   else if(PWR_fixed>=min_for_start && PWR_fixed<max_for_start && SWR_fixed>99) {
+       if(  (SWR_fixed-SWR_fixed_old)>delta || (SWR_fixed_old-SWR_fixed)>delta  ) {
            Btn_long();
            return;
        }
@@ -241,7 +234,7 @@ void watch_swr(void){
    //
    return;
 }
-
+//
 void draw_swr(unsigned int s){
    if(s==0)
       oled_wr_str(2, 60, "0.00", 4);
@@ -256,7 +249,7 @@ void draw_swr(unsigned int s){
    }
    return;
 }
-
+//
 void draw_power(unsigned int p){
    //
    if(p==0){
@@ -285,12 +278,16 @@ void draw_power(unsigned int p){
    oled_wr_str(0, 60, txt, 3);
    return;
 }
-
-void Voltage_show(){
+//
+void Voltage_show(){       //  4.2 - 3.4  4200 - 3400
    get_batt();
-   if(Voltage != Voltage_old) { Voltage_old = Voltage; oled_voltage(Voltage); }
-   //               4.2 - 3.4
-   //rldl = Rel_Del + (4200 - Voltage) / 100;
+   if(Voltage != Voltage_old) { 
+      Voltage_old = Voltage; 
+      oled_voltage(Voltage); 
+      if(Voltage<=3800) rldl = Rel_Del + 1;
+      else rldl = Rel_Del;
+   }
+   //
    if(Voltage>3700){
       Green = 0;
       Red = 1;
@@ -312,7 +309,6 @@ void Voltage_show(){
       Red = 1;
       Green = 1;
    }
-   //
    if(Voltage<3400){
       oled_clear();
       oled_wr_str(1, 0, "  LOW BATT ", 11);
@@ -322,25 +318,29 @@ void Voltage_show(){
    }
    return;
 }
-
+//
 void Btn_xlong(){
-// moved to power_off()
-//   oled_clear();
-//   oled_wr_str(1, 0, " POWER OFF ", 11);
-//   Delay_ms(2000);
+   oled_clear();
+   oled_wr_str(1, 0, " POWER OFF ", 11);
+   Delay_ms(2000);
    power_off();
    return;
 }
-
+//
 void Btn_long(){
    Green = 0;
    oled_wr_str(2, 0, "TUNE     ", 9);
-   tune();
-   SWR_ind = SWR;
-   SWR_fixed_old = SWR;
-   oled_wr_str(2, 0, "SWR ", 4);
-   oled_wr_str(2, 42, "=", 1);
-   draw_swr(SWR_ind);
+   Key_out = 0;
+   get_SWR();
+   if(SWR>99){
+      tune();
+      SWR_ind = SWR;
+      SWR_fixed_old = SWR;
+      oled_wr_str(2, 0, "SWR ", 4);
+      oled_wr_str(2, 42, "=", 1);
+      draw_swr(SWR_ind);
+   }
+   Key_out = 1;
    Green = 1;
    B_long = 0;
    E_long = 0;
@@ -349,17 +349,21 @@ void Btn_long(){
    watch_cnt = Tick;
    return;
 }
-
+//
 void Ext_long(){
    Green = 0;
    OLED_PWD = 1;
-   tune();
+   Key_out = 0;   //
+   get_SWR();     //
+   if(SWR>99)
+      tune();
+   Key_out = 1;   //
    SWR_ind = SWR;
    Green = 1;
    E_long = 0;
    return;
 }
-
+//
 void Btn_short(){
    Green = 0;
    atu_reset();
@@ -378,27 +382,27 @@ void Btn_short(){
    watch_cnt = Tick;
    return;
 }
-
+//
 void Greating(){
    Green = 0;
    oled_clear();
    oled_wr_str_s(1, 0, " DESIGNED BY N7DDC", 18);
    oled_wr_str_s(3, 0, " FW VERSION ", 12);
-   oled_wr_str_s(3, 12*7, FW_VER, strlen(FW_VER));
+   oled_wr_str_s(3, 12*7, FW_VER, 3);
    Delay_ms(3000);
    while(GetButton) asm NOP;
    Green = 1;
    return;
 }
-
+//
 void atu_reset(){
    ind = 0;
-   cap = 0;
+   cap = 1;
    SW = 0;
    Relay_set(ind, cap, SW);
    return;
 }
-
+//
 void Relay_set(char L, char C, char I){
    L_010 = ~L.B0;
    L_022 = ~L.B1;
@@ -446,7 +450,7 @@ void Relay_set(char L, char C, char I){
    C_sw = 0;
    return;
 }
-
+//
 void power_off(void){
    char btn_cnt;
    // Disable interrupts
@@ -457,14 +461,6 @@ void power_off(void){
    IOCBF5_bit = 0;
    IOCBN5_bit = 1;
    // Power saving
-#ifdef AD8361
-   AD8361_PWD = 1; // disable AD8361
-#endif
-   // say good-bye nicely
-   if(OLED_PWD==0) { OLED_PWD = 1; Delay_ms(200); Soft_I2C_init(); Delay_ms(10); oled_init(); }
-   oled_clear();
-   oled_wr_str(1, 0, " POWER OFF ", 11);
-   Delay_ms(2000);
    OLED_PWD = 0;
    RED = 1;
    Green = 1;
@@ -485,9 +481,6 @@ void power_off(void){
    T0EN_bit = 1;
    GIE_bit = 1;
    // Return to work
-#ifdef AD8361
-   AD8361_PWD = 0; // enable AD8361
-#endif
    gre = 1;
    oled_start();
    while(GetButton){asm NOP;}
@@ -495,7 +488,7 @@ void power_off(void){
    btn_cnt = Tick;
    return;
 }
-
+//
 void check_reset_flags(void){
    char i = 0;
    if(STKOVF_bit){oled_wr_str_s(0,  0, "Stack overflow",  14); i = 1;}
@@ -509,8 +502,7 @@ void check_reset_flags(void){
    }
    return;
 }
-
-#ifndef AD8361
+//
 int correction(int input) {
      input *= 2;
      //
@@ -525,8 +517,7 @@ int correction(int input) {
      //
      return input;
 }
-#endif
-
+//
 int get_reverse(void){
    unsigned int v;
    unsigned long d;
@@ -550,7 +541,7 @@ int get_reverse(void){
    }
    return v;
 }
-
+//
 int get_forward(void){
    unsigned int v;
    unsigned long d;
@@ -574,8 +565,7 @@ int get_forward(void){
    }
    return v;
 }
-
-
+//
 void get_pwr(){
    long Forward, Reverse;
    float p;
@@ -583,27 +573,18 @@ void get_pwr(){
    Forward = get_forward();
    Reverse = get_reverse();
    //
-#ifdef AD8361
-   p = Forward / 7.22;
-   p = p * 110.0;
-   p = p / 1000.0;
-   p = p * p;
-   p = p / 5;
-   p += 0.5;
-#else
    p = correction(Forward);
-   p = p * 5 / 1000;
+   P = p * 5 / 1000;
    p = p / 1.414;
    p = p * p;
    p = p / 5;
    p += 0.5;
-#endif
    PWR = p;
    //
    if(PWR>0){
       if(OLED_PWD){
-         disp_cnt = Tick + Disp_time*1000;
-         off_cnt = Tick + Off_time*1000;
+         disp_cnt = Disp_time;
+         off_cnt = Off_time;
       }
       else oled_start();
    }
@@ -618,7 +599,7 @@ void get_pwr(){
    SWR = Forward;
    return;
 }
-
+//
 void get_swr(){
    unsigned int pwr_cnt = 300, tuneoff_cnt = 300;
    unsigned int PWR_max = 0;
@@ -654,182 +635,290 @@ void get_swr(){
    //  good power
    return;
 }
-
+//
 void get_batt(void){
    ADC_Init_Advanced(_ADC_INTERNAL_VREFL | _ADC_INTERNAL_FVRH1);
    Delay_us(100);
    Voltage = ADC_Get_Sample(Battery_input) * 11;
    return;
 }
-
- void coarse_cap() {
-   char step = 3;
-   char count;
-   int min_swr;
-   //
-   cap = 0;
-   Relay_set(ind, cap, SW);
-   get_swr();
-   min_swr = SWR + SWR/20;
-   for(count=step; count<=31;) {
-      Relay_set(ind, count, SW);
-      get_swr();
-      if(SWR < min_swr) {
-         min_swr = SWR + SWR/20;
-         cap = count;
-         step_cap = step;
-         if(SWR<120) break;
-         count += step;
-         if(count==9) count = 8;
-         else if(count==17) {count = 16; step = 4;}
-      }
-      else break;
-   }
-   Relay_set(ind, cap, SW);
-   return;
-}
-
-void coarse_tune() {
-   char step = 3;
-   char count;
-   char mem_cap, mem_step_cap;
-   int min_swr;
-
-   mem_cap = 0;
-   step_ind = step;
-   mem_step_cap = 3;
-   get_swr();                 // EW3MM: initialise the SWR variable before using it!
-   min_swr = SWR + SWR/20;
-   for(count=step; count<=31;) {
-      Relay_set(count, cap, SW);
-      coarse_cap();
-      get_swr();
-      if(SWR < min_swr) {
-         min_swr = SWR + SWR/20;
-         ind = count;
-         mem_cap = cap;
-         step_ind = step;
-         mem_step_cap = step_cap;
-         if(SWR<120) break;
-         count += step;
-         if(count==9) count = 8;
-         else if(count==17) {count = 16; step = 4;}
-      }
-      else break;
-   }
-   cap = mem_cap;
-   Relay_set(ind, cap, SW);
-   step_cap = mem_step_cap;
-   Delay_ms(10);
-   return;
-}
-
-void sharp_cap() {
-   char range, count, max_range, min_range;
-   int min_swr;
-   range = step_cap;
-   //
-   max_range = cap + range;
-   if(max_range>31) max_range = 31;
-   if(cap>range) min_range = cap - range; else min_range = 0;
-   cap = min_range;
-   Relay_set(ind, cap, SW);
-   get_swr();
-   if(SWR==0) return;
-   min_SWR = SWR;
-   for(count=min_range+1; count<=max_range; count++)  {
-      Relay_set(ind, count, SW);
-      get_swr();
-      if(SWR==0) return;
-      if(SWR>=min_SWR) { Delay_ms(10); get_swr(); }
-      if(SWR>=min_SWR) { Delay_ms(10); get_swr(); }
-      if(SWR < min_SWR) {
-         min_SWR = SWR;
-         cap = count;
-         if(SWR<120) break;
-      }
-      else break;
-   }
-   Relay_set(ind, cap, SW);
-   return;
-}
-
-void sharp_ind() {
-   char range, count, max_range, min_range;
-   int min_SWR;
-   range = step_ind;
-   //
-   max_range = ind + range;
-   if(max_range>31) max_range = 31;
-   if(ind>range) min_range = ind - range; else min_range = 0;
-   ind = min_range;
-   Relay_set(ind, cap, SW);
-   get_swr();
-   if(SWR==0) return;
-   min_SWR = SWR;
-   for(count=min_range+1; count<=max_range; count++) {
-      Relay_set(count, cap, SW);
-      get_swr();
-      if(SWR==0) return;
-      if(SWR>=min_SWR) { Delay_ms(10); get_swr(); }
-      if(SWR>=min_SWR) { Delay_ms(10); get_swr(); }
-      if(SWR < min_SWR) {
-         min_SWR = SWR;
-         ind = count;
-         if(SWR<120) break;
-      }
-      else break;
-   }
-   Relay_set(ind, cap, SW);
-   return;
-}
-
-
-void tune() {
-   int swr_mem, ind_mem, cap_mem;
-   asm CLRWDT;
-   Key_out = 0;
-   Delay_ms(100);
-   get_swr(); if(SWR<110) { Key_out = 1; return; }
-   atu_reset();
-   Delay_ms(50);
-   get_swr(); if(SWR<110) { Key_out = 1; return; }
-   //
-   swr_mem = SWR;
-   coarse_tune(); if(SWR==0) {atu_reset(); Key_out = 1; return;}
-   get_swr(); if(SWR<120) { Key_out = 1;  return; }
-   sharp_ind();  if(SWR==0) {atu_reset(); Key_out = 1; return;}
-   get_swr(); if(SWR<120) { Key_out = 1; return; }
-   sharp_cap(); if(SWR==0) {atu_reset(); Key_out = 1; return;}
-   get_swr(); if(SWR<120) { Key_out = 1; return; }
-   //
-   if(SWR<200 && SWR<swr_mem && (swr_mem-SWR)>100) { Key_out = 1; return; }
-   swr_mem = SWR;
-   ind_mem = ind;
-   cap_mem = cap;
-   //
-   if(SW==1) SW = 0; else SW = 1;
-   atu_reset();
-   Relay_set(ind, cap, SW);
-   Delay_ms(50);
-   get_swr(); if(SWR<120) { Key_out = 1; return; }
-   //
-   coarse_tune(); if(SWR==0) {atu_reset(); Key_out = 1; return;}
-   get_swr(); if(SWR<120) { Key_out = 1; return; }
-   sharp_ind(); if(SWR==0) {atu_reset(); Key_out = 1; return;}
-   get_swr(); if(SWR<120) { Key_out = 1; return; }
-   sharp_cap(); if(SWR==0) {atu_reset(); Key_out = 1; return;}
-   get_swr(); if(SWR<120) { Key_out = 1; return; }
-   //
-   if(SWR>swr_mem) {
-      if(SW==1) SW = 0; else SW = 1;
-      ind = ind_mem;
-      cap = cap_mem;
-      Relay_set(ind, cap, sw);
-   }
-   //
-   asm CLRWDT;
+//
+void tune(void){
+   int SWR_mem;
+   char cap_mem, ind_mem;
+   subtune();
    get_SWR();
-   Key_out = 1;
+   if(SWR<=120) return;
+   SWR_mem = SWR;
+   cap_mem = cap;
+   ind_mem = ind;
+   if(SW==1) SW = 0;
+   else SW = 1;
+   subtune();
+   get_SWR();
+   if(SWR>SWR_mem){
+      if(SW==1) SW = 0;
+      else SW = 1;
+      cap = cap_mem;
+      ind = ind_mem;
+      Relay_set(ind, cap, SW);
+      Delay_ms(5);
+      get_SWR();
+   }
+   if(SWR<=120) return;
+   sharp_tune();
+   get_SWR();
    return;
 }
+//
+void subtune(void){
+   cap = 0;
+   ind = 0;
+   Relay_set(ind, cap, SW);
+   delay_ms(50);
+   get_SWR();
+   if(SWR<=120) return;
+   coarse_tune();
+   get_SWR();
+   if(SWR<=120) return;
+   sharp_tune();
+   return;
+}
+//
+void coarse_tune(void){
+   int SWR_mem1 = 10000, SWR_mem2 = 10000, SWR_mem3 = 10000;
+   char ind_mem1, cap_mem1, ind_mem2, cap_mem2, ind_mem3, cap_mem3;
+   coarse_cap();
+   coarse_ind();
+   get_SWR();
+   if(SWR<=120) return;
+   SWR_mem1 = SWR;
+   ind_mem1 = ind;
+   cap_mem1 = cap;
+   if(cap<=2 & ind<=2){
+      cap = 0;
+      ind = 0;
+      Relay_set(ind, cap, SW);
+      Delay_ms(5);
+      coarse_ind();
+      coarse_cap();
+      get_SWR();
+      if(SWR<=120) return;
+      SWR_mem2 = SWR;
+      ind_mem2 = ind;
+      cap_mem2 = cap;
+   }
+   if(cap<=2 & ind<=2){
+      cap = 0;
+      ind = 0;
+      Relay_set(ind, cap, SW);
+      Delay_ms(5);
+      coarse_ind_cap();
+      get_SWR();
+      if(SWR<=120) return;
+      SWR_mem3 = SWR;
+      ind_mem3 = ind;
+      cap_mem3 = cap;
+   }
+   if(SWR_mem1<=SWR_mem2 & SWR_mem1<=SWR_mem3){
+      cap = cap_mem1;
+      ind = ind_mem1;
+   }
+   else if(SWR_mem2<=SWR_mem1 & SWR_mem2<=SWR_mem3){
+      cap = cap_mem2;
+      ind = ind_mem2;
+   }
+   else if(SWR_mem3<=SWR_mem1 & SWR_mem3<=SWR_mem2){
+      cap = cap_mem3;
+      ind = ind_mem3;
+   }
+   return;
+}
+//
+void coarse_ind_cap(void){
+   int SWR_mem;
+   char ind_mem;
+   ind_mem = 0;
+   get_swr();
+   SWR_mem = SWR / 10;
+   for(ind=1; ind<64; ind*=2){
+      Relay_set(ind, ind, SW);
+      Delay_ms(5);
+      get_swr();
+      SWR = SWR/10;
+      if(SWR<=SWR_mem){
+         ind_mem = ind;
+         SWR_mem = SWR;
+      }
+      else
+         break;
+   }
+   ind = ind_mem;
+   cap = ind_mem;
+   Relay_set(ind, cap, SW);
+   Delay_ms(5);
+   return;
+}
+//
+void coarse_cap(void){
+   int SWR_mem;
+   char cap_mem;
+   cap_mem = 0;
+   get_swr();
+   SWR_mem = SWR / 10;
+   for(cap=1; cap<64; cap*=2){
+      Relay_set(ind, cap, SW);
+      Delay_ms(5);
+      get_swr();
+      SWR = SWR/10;
+      if(SWR<=SWR_mem){
+         cap_mem = cap;
+         SWR_mem = SWR;
+      }
+      else
+         break;
+   }
+   cap = cap_mem;
+   Relay_set(ind, cap, SW);
+   Delay_ms(5);
+   return;
+}
+//
+void coarse_ind(void){
+   int SWR_mem;
+   char ind_mem;
+   ind_mem = 0;
+   get_swr();
+   SWR_mem = SWR / 10;
+   for(ind=1; ind<64; ind*=2){
+      Relay_set(ind, cap, SW);
+      Delay_ms(5);
+      get_swr();
+      SWR = SWR/10;
+      if(SWR<=SWR_mem){
+         ind_mem = ind;
+         SWR_mem = SWR;
+      }
+      else
+         break;
+   }
+   ind = ind_mem;
+   Relay_set(ind, cap, SW);
+   Delay_ms(5);
+   return;
+}
+//
+void sharp_tune(void){
+   if(cap>=ind){
+      sharp_cap();
+      sharp_ind();
+   }
+   else{
+      sharp_ind();
+      sharp_cap();
+   }
+   return;
+}
+//
+void sharp_cap(void){
+   int SWR_mem;
+   char step, cap_mem;
+   cap_mem = cap;
+   step = cap / 10;
+   if(step==0) step = 1;
+   get_SWR();
+   SWR_mem = SWR;
+   cap += step;
+   Relay_set(ind, cap, SW);
+   Delay_ms(5);
+   get_SWR();
+   if(SWR<=SWR_mem){
+      SWR_mem = SWR;
+      cap_mem = cap;
+      for(cap+=step; cap<=(127-step); cap+=step){
+         Relay_set(ind, cap, SW);
+         Delay_ms(5);
+         get_SWR();
+         if(SWR<=SWR_mem){
+            cap_mem = cap;
+            SWR_mem = SWR;
+            step = cap / 10;
+            if(step==0) step = 1;
+         }
+         else
+            break;
+      }
+   }
+   else{
+      SWR_mem = SWR;
+      for(cap-=step; cap>=step; cap-=step){
+         Relay_set(ind, cap, SW);
+         Delay_ms(5);
+         get_SWR();
+         if(SWR<=SWR_mem){
+            cap_mem = cap;
+            SWR_mem = SWR;
+            step = cap / 10;
+            if(step==0) step = 1;
+         }
+         else
+            break;
+      }
+   }
+   cap = cap_mem;
+   Relay_set(ind, cap, SW);
+   Delay_ms(5);
+   return;
+}
+//
+void sharp_ind(void){
+   int SWR_mem;
+   char step, ind_mem;
+   ind_mem = ind;
+   step = ind / 10;
+   if(step==0) step = 1;
+   get_SWR();
+   SWR_mem = SWR;
+   ind += step;
+   Relay_set(ind, cap, SW);
+   Delay_ms(5);
+   get_SWR();
+   if(SWR<=SWR_mem){
+      SWR_mem = SWR;
+      ind_mem = ind;
+      for(ind+=step; ind<=(127-step); ind+=step){
+         Relay_set(ind, cap, SW);
+         Delay_ms(5);
+         get_SWR();
+         if(SWR<=SWR_mem){
+            ind_mem = ind;
+            SWR_mem = SWR;
+            step = ind / 10;
+            if(step==0) step = 1;
+         }
+         else
+            break;
+      }
+   }
+   else{
+      SWR_mem = SWR;
+      for(ind-=step; ind>=step; ind-=step){
+         Relay_set(ind, cap, SW);
+         Delay_ms(5);
+         get_SWR();
+         if(SWR<=SWR_mem){
+            ind_mem = ind;
+            SWR_mem = SWR;
+            step = ind / 10;
+            if(step==0) step = 1;
+         }
+         else
+            break;
+      }
+   }
+   ind = ind_mem;
+   Relay_set(ind, cap, SW);
+   Delay_ms(5);
+   return;
+}
+//
