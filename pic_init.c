@@ -1,13 +1,14 @@
 // pic_init unit for Micro C PRO
-// 2020
+// David Fainitski for ATU-10 project
+// 2020, 2022
 
 void pic_init (void) {
 // ports initialisation
   ANSELA = 0;         // all as digital
   ANSELB = 0;         // all as digital
-  ANSB0_bit = 1;      // analog input
-  ANSB1_bit = 1;      // analog input
-  ANSB2_bit = 1;      // analog input
+  ANSB0_bit = 1;      // analog input, V_forward
+  ANSB1_bit = 1;      // analog input, V_battery
+  ANSB2_bit = 1;      // analog input, V_reflected
   ANSELC = 0;         // all as digital
   ANSELE = 0;         // all as digital
   ANSELD = 0;         // all as digital
@@ -32,10 +33,10 @@ void pic_init (void) {
   TRISE = 0b00000000;
 
   // open drains
-  ODCA2_bit = 1;
-  ODCA3_bit = 1;
-  ODCD1_bit = 1;
-  ODCD2_bit = 1;
+  ODCA2_bit = 1;	// i2c SDA
+  ODCA3_bit = 1;	// i2c SCL
+  ODCD1_bit = 1;	// remote control RING
+  ODCD2_bit = 1;	// remote control TIP
   
   // Timer0 settings
   T0CS0_bit = 0; // Fosc/4
@@ -49,12 +50,12 @@ void pic_init (void) {
   TMR0IE_bit = 1;
   
   // Modules disable
-  PMD0 = 0b00011110; //
-  PMD1 = 0b11111110;
-  PMD2 = 0b01000111;
-  PMD3 = 0b01111111;
-  PMD4 = 0b1110111;
-  PMD5 = 0b11011111;
+  PMD0 = 0b00011110; // ON: IRQonChange, FixVoltRef, SysClkNet
+  PMD1 = 0b11111110; // ON: Timer0; OFF: all other
+  PMD2 = 0b01000111; // ON: ADC; OFF: all other
+  PMD3 = 0b01111111; // ON: nothing (PWMs)
+  PMD4 = 0b01110111; // ON: nothing
+  PMD5 = 0b11011111; // ON: nothing
   //interrupt setting
   GIE_bit = 1;
   Delay_ms (100);

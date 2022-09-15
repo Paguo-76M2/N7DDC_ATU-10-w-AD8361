@@ -31,7 +31,7 @@ void power_off(void);
 void Greating(void);
 void Ext_long(void);
 
-
+#define AD8361        // adds support for TI's AD8361 TruPwr RF-detector
 
 #define ON 1
 #define OFF 0

@@ -3,6 +3,11 @@
 ### Official conversation group - https://groups.io/g/ATU100
 ### Schematic and assembly instruction by VK3PE - http://carnut.info/ATU_N7DDC/ATU-10/ATU-10_by-vk3pe_build_info/ATU-10_vk3pe_V1.2_ALL_INFO_290921.pdf
 
+######
+New in FW version 1.5 RMS
+- Tuning algorithm improvement
+- Minor changes
+
 ###### New in FW version 1.4 RMS
 - merged code for AD8361, borrowed from N7DDC's "Symmetric" ATU
 - firmware's support of original (diode) detectors is retained, to compile a FW with diodes detector - comment out the AD8361 definition declaration in the main.h file (line #30)
